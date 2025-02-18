@@ -1,0 +1,67 @@
+/* Profile Page Styles */
+.profile-container {
+    width: 100%;
+    max-width: 400px;
+    margin: 50px auto;
+    padding: 20px;
+    background: #ffffff;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+    text-align: center;
+    font-family: "Arial", sans-serif;
+}
+
+h1 {
+    font-size: 24px;
+    color: #333;
+    margin-bottom: 20px;
+}
+
+.profile-info {
+    text-align: left;
+    padding: 10px 0;
+}
+
+.profile-info p {
+    font-size: 16px;
+    color: #555;
+    margin: 8px 0;
+}
+
+.profile-info strong {
+    color: #222;
+}
+
+/* Logout Button */
+.logout-button {
+    width: 100%;
+    padding: 12px;
+    background-color: #d9534f; /* Bootstrap danger color */
+    color: white;
+    font-size: 16px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: 0.3s;
+    margin-top: 20px;
+}
+
+.logout-button:hover {
+    background-color: #c9302c;
+}
+
+/* Responsive Design */
+@media (max-width: 600px) {
+    .profile-container {
+        width: 90%;
+        padding: 15px;
+    }
+
+    h1 {
+        font-size: 20px;
+    }
+
+    .profile-info p {
+        font-size: 14px;
+    }
+}
