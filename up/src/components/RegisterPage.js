@@ -36,12 +36,13 @@ const RegisterPage = () => {
                 // Redirect to login page after 2 seconds
                 setTimeout(() => navigate('/login', { state: { message: 'Registration Successful! Please log in.' } }), 2000);
             } else {
-                setMessage("❌ " + data.message);
+                setMessage("❌ " + (data.message || "Registration failed. Try again."));
                 setIsSuccess(false);
             }
         } catch (error) {
-            console.error("⚠️ Error:", error);
-            setMessage("⚠️ Server error. Try again later.");
+            console.error("⚠️ Network or Server Error:", error);
+            setMessage("⚠️ Server error. Please try again later.");
+            setIsSuccess(false);
         }
     };
 

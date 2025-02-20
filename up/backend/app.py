@@ -1,5 +1,4 @@
-import os
-import json
+import mysql.connector
 import bcrypt
 from flask import Flask, request, jsonify, session
 from flask_cors import CORS
@@ -8,119 +7,121 @@ app = Flask(__name__)
 app.secret_key = 'your_secret_key'
 CORS(app, supports_credentials=True)
 
-# Ensure `users.json` exists
-users_file = "users.json"
-if not os.path.exists(users_file):
-    with open(users_file, "w") as file:
-        json.dump({}, file)  # Create an empty JSON file
-    print("✅ Created users.json")
+# MySQL Database Configuration
+db_config = {
+    "host": 'localhost',
+    "user": 'root',
+    "password": '',
+    "database": 'strike'  # Ensure this matches your actual database name
+}
 
-# Load users from `users.json`
-try:
-    with open(users_file, "r") as file:
-        users_db = json.load(file)
-    print("✅ Loaded users.json successfully")
-except Exception as e:
-    print(f"❌ Error loading users.json: {e}")
-    users_db = {}
-
-
-# Function to save users to `users.json`
-def save_users():
-    try:
-        with open("users.json", "w") as file:
-            json.dump(users_db, file, indent=4)
-            file.flush()
-            os.fsync(file.fileno())
-        print("✅ Users saved successfully!")
-    except Exception as e:
-        print(f"❌ Error saving users: {e}")
-
-
+# **Function to Connect to MySQL**
+def get_db_connection():
+    return mysql.connector.connect(**db_config)
 
 # **Register Route**
 @app.route('/RegisterPage', methods=['POST'])
 def RegisterPage():
-    data = request.json
-    name = data.get('name')
-    email = data.get('email')
-    c_no = data.get('c_no')
-    location = data.get('location')
-    password = data.get('password')
+    data = request.get_json()
+    print("Received data:", data)  # Debugging line
 
-    if not email or not password:
-        return jsonify({"message": "Email and password are required"}), 400
+    if not data:
+        return jsonify({"error": "No data received"}), 400
 
-    if email in users_db:
-        return jsonify({"message": "Email already registered"}), 400
+    # Ensure all required fields are present
+    required_fields = ['name', 'email', 'c_no', 'location', 'password']
+    for field in required_fields:
+        if field not in data:
+            return jsonify({"error": f"Missing field: {field}"}), 400
 
-    # Hash the password before storing
+    name = data['name']
+    email = data['email']
+    c_no = data['c_no']
+    location = data['location']
+    password = data['password']
+
+    # Hash the password securely
     hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
-    users_db[email] = {
-        'name': name,
-        'email': email,
-        'c_no': c_no,
-        'location': location,
-        'password': hashed_password  # Store hashed password
-    }
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
 
-    save_users()  # Save to `users.json`
-    
-    print("🔍 Updated User Database:", users_db)
+        # Insert user data into MySQL
+        cursor.execute(
+            "INSERT INTO users (name, email, c_no, location, password) VALUES (%s, %s, %s, %s, %s)",
+            (name, email, c_no, location, hashed_password)
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
 
-    return jsonify({"message": "Registration successful!"}), 201
+        return jsonify({"message": "User registered successfully"}), 201
 
+    except mysql.connector.Error as err:
+        return jsonify({"error": f"Database error: {err}"}), 500
 
 # **Login Route**
 @app.route('/LoginPage', methods=['POST'])
 def LoginPage():
-    data = request.json
-    print("🔹 Incoming Login Data:", data)
-
-    email = data.get('email')
-    password = data.get('password')
-
-    if not email or not password:
-        return jsonify({"message": "Email and password are required"}), 400
-
-    user = users_db.get(email)
+    data = request.get_json()
     
+    if not data or 'email' not in data or 'password' not in data:
+        return jsonify({"message": "Missing email or password"}), 400
+
+    email = data['email']
+    password = data['password']
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+    user = cursor.fetchone()
+
+    cursor.close()
+    conn.close()
+
     if not user:
-        print("❌ User not found in database")
-        print("📂 Current users in database:", users_db)
         return jsonify({"message": "Invalid email or password"}), 401
 
-    # Compare hashed password
+    # Verify password
     if not bcrypt.checkpw(password.encode('utf-8'), user['password'].encode('utf-8')):
-        print("❌ Incorrect password")
         return jsonify({"message": "Invalid email or password"}), 401
 
-    session.permanent = True
-    session['email'] = email
+    # ✅ Store user email in session
+    session['email'] = user['email']
 
-    print("✅ Login Successful for:", email)
-    return jsonify({"message": "Login successful!", "user": user}), 200
-
+    return jsonify({"message": "Login successful", "user": user}), 200
 
 # **Get User Route**
 @app.route('/user', methods=['GET'])
 def get_user():
+    # ✅ Check session for user email
     email = session.get('email')
-    if not email or email not in users_db:
+    if not email:
         return jsonify({"message": "User not logged in"}), 401
 
-    return jsonify({"user": users_db[email]})
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    cursor.execute("SELECT name, email, c_no, location FROM users WHERE email = %s", (email,))
+    user = cursor.fetchone()
+    cursor.close()
+    conn.close()
+
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+
+    return jsonify({"user": user}), 200
 
 
 # **Logout Route**
 @app.route('/LogoutPage', methods=['GET'])
 def LogoutPage():
-    session.clear()  # Only clears the session, not the users.json file
-    return jsonify({"message": "Logout successful!"}), 200
+    session.clear()
+    return jsonify({"message": "You have been logged out successfully!"}), 200
 
 
-
-# **Run Flask App**
 if __name__ == '__main__':
     app.run(debug=True)
+

@@ -21,23 +21,29 @@ const LoginPage = () => {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(requestData),
+                credentials: "include", // ✅ Allow cookies (important for session)
             });
-    
+        
             const data = await response.json();
             console.log("🔹 Received response:", data);  // Debugging
     
             if (response.ok) {
                 setMessage("✅ Login Successful!");
                 setIsSuccess(true);
+                
+                // Store user info in localStorage
                 localStorage.setItem("user", JSON.stringify(data.user));
+                
+                // Redirect to profile page after 2 seconds
                 setTimeout(() => navigate("/profile"), 2000);
             } else {
-                setMessage("❌ " + data.message);
+                setMessage("❌ " + (data.message || "Invalid login credentials."));
                 setIsSuccess(false);
             }
         } catch (error) {
-            console.error("⚠️ Error:", error);
-            setMessage("⚠️ Server error. Try again later.");
+            console.error("⚠️ Network or Server Error:", error);
+            setMessage("⚠️ Server error. Please try again later.");
+            setIsSuccess(false);
         }
     };
     
@@ -52,7 +58,7 @@ const LoginPage = () => {
             )}
 
             <form onSubmit={handleSubmit}>
-                <div className="form-groups">
+                <div className="form-group">
                     <label htmlFor="email">Email:</label>
                     <input
                         type="email"
@@ -62,7 +68,7 @@ const LoginPage = () => {
                         required
                     />
                 </div>
-                <div className="form-groups">
+                <div className="form-group">
                     <label htmlFor="password">Password:</label>
                     <input
                         type="password"
@@ -78,6 +84,26 @@ const LoginPage = () => {
             <p>
                 <Link to="/register">Don't have an account? Register here.</Link>
             </p>
+
+            <style>{`
+                .message {
+                    font-size: 16px;
+                    margin-top: 10px;
+                    padding: 10px;
+                    text-align: center;
+                    border-radius: 5px;
+                }
+                .success {
+                    background-color: #d4edda;
+                    color: #155724;
+                    border: 1px solid #c3e6cb;
+                }
+                .error {
+                    background-color: #f8d7da;
+                    color: #721c24;
+                    border: 1px solid #f5c6cb;
+                }
+            `}</style>
         </div>
     );
 };

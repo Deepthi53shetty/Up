@@ -41,7 +41,8 @@ const HomePage = () => {
             </section>
 
             <footer>
-                <p>&copy; 2025 Strike Up. All Rights Reserved. <a href="#">Privacy Policy</a></p>
+                <p>&copy; 2025 Strike Up. All Rights Reserved.<Link to="/policy-page">Privacy policy</Link>
+                </p>
             </footer>
         </div>
     );
